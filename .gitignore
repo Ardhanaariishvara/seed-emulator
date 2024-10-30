@@ -27,3 +27,7 @@ client/backend/bin
 output
 project-words.txt
 .venv
+
+bin
+lib*
+pyvenv.cfg
