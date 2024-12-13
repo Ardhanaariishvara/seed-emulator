@@ -28,4 +28,4 @@ class PathSec(Layer, Graphable):
         reg = emulator.getRegistry()
         for neighbour in self.__neighbours.keys():
             node: Node = reg.get(neighbour)
-            node.setFile('/etc/bind/')
+            node.appendFile('/etc/bind/zones/', PathSecFileTemplates["bind_txt_record"].format())

@@ -1,5 +1,5 @@
 from seedemu import Emulator, Base, Routing, Ebgp, Ibgp, Ospf, WebService, DomainNameService, \
-    OpenVpnRemoteAccessProvider, PeerRelationship, Docker, DomainNameCachingService, Binding, Filter
+    OpenVpnRemoteAccessProvider, PeerRelationship, Docker, DomainNameCachingService, Binding, Filter, Platform
 from seedemu.utilities import Makers
 
 emu = Emulator()
@@ -53,6 +53,10 @@ ebgp.addPrivatePeerings(204, [3], [11], PeerRelationship.Provider)
 ebgp.addPrivatePeerings(204, [11], [112], PeerRelationship.Peer)
 ebgp.addPrivatePeerings(204, [3], [112], PeerRelationship.Provider)
 
+base.getAutonomousSystem(112).createHost('web').joinNetwork('net0')
+web.install('webtest')
+emu.addBinding(Binding('webtest', filter=Filter(nodeName='web', asn=112)))
+
 dns.install('a-root-server').addZone('.').setMaster()
 dns.install('b-root-server').addZone('.')
 dns.install('a-com-server').addZone('com.')
@@ -91,4 +95,5 @@ emu.addLayer(dns)
 emu.addLayer(ldns)
 
 emu.render()
+docker = Docker(internetMapEnabled=True, platform=Platform.AMD64)
 emu.compile(Docker(), './output')
