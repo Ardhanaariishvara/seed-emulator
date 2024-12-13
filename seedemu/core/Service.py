@@ -5,8 +5,9 @@ from .Printable import Printable
 from .Emulator import Emulator
 from .enums import NodeRole
 from .Binding import Binding
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, TypeVar
 from .BaseSystem import BaseSystem
+
 
 class Server(Printable):
     """!
@@ -16,6 +17,7 @@ class Server(Printable):
     """
     __class_names: list
     _base_system: BaseSystem
+
     def __init__(self):
         super().__init__()
         self.__class_names = []
@@ -28,7 +30,7 @@ class Server(Printable):
         @param node node.
         """
         raise NotImplementedError('install not implemented')
-    
+
     def setBaseSystem(self, base_system: BaseSystem) -> Server:
         """!
         @brief Set a base_system of a server.
@@ -38,7 +40,7 @@ class Server(Printable):
         @returns self, for chaining API calls.
         """
         self._base_system = base_system
-    
+
     def getBaseSystem(self) -> BaseSystem:
         """!
         @brief Get configured base system on this server.
@@ -49,8 +51,8 @@ class Server(Printable):
 
     def getClassNames(self):
         return self.__class_names
-    
-    def appendClassName(self, class_name:str):
+
+    def appendClassName(self, class_name: str):
         """!
         @brief Append Class Name
         The method called by User. 
@@ -63,7 +65,10 @@ class Server(Printable):
         self.__class_names.append(class_name)
 
         return self
-        
+
+
+
+T = TypeVar('T', bound='Service')
 class Service(Layer):
     """!
     @brief Service base class.
@@ -72,7 +77,7 @@ class Service(Layer):
     """
 
     _pending_targets: Dict[str, Server]
-    
+
     __targets: Set[Tuple[Server, Node]]
 
     def __init__(self):
@@ -96,7 +101,7 @@ class Service(Layer):
         """
         server.install(node)
 
-    def _doSetClassNames(self, node:Node, server:Server) -> Node:
+    def _doSetClassNames(self, node: Node, server: Server) -> Node:
         """!
         @brief set the class names on node. 
 
@@ -131,8 +136,12 @@ class Service(Layer):
 
         for (name, service_info) in servicesdb.items():
             service: Service = service_info['__self']
-            assert name not in self.getConflicts(), '{} conflict with {} on as{}/{}.'.format(self.getName(), service.getName(), node.getAsn(), node.getName())
-            assert self.getName() not in service.getConflicts(), '{} conflict with {} on as{}/{}.'.format(self.getName(), service.getName(), node.getAsn(), node.getName())
+            assert name not in self.getConflicts(), '{} conflict with {} on as{}/{}.'.format(self.getName(),
+                                                                                             service.getName(),
+                                                                                             node.getAsn(),
+                                                                                             node.getName())
+            assert self.getName() not in service.getConflicts(), '{} conflict with {} on as{}/{}.'.format(
+                self.getName(), service.getName(), node.getAsn(), node.getName())
 
         m_name = self.getName()
         if m_name not in servicesdb:
@@ -141,7 +150,7 @@ class Service(Layer):
             }
 
         node.setBaseSystem(server.getBaseSystem())
-        
+
         self._doConfigure(node, server)
         self.__targets.add((server, node))
 
@@ -154,10 +163,10 @@ class Service(Layer):
         new_dict = {}
         for k, v in self._pending_targets.items():
             new_dict[prefix + k] = v
-        
+
         self._pending_targets = new_dict
 
-    def install(self, vnode: str) -> Server:
+    def install(self, vnode: str) -> T:
         """!
         @brief install the service on a node identified by given name.
         """
@@ -174,13 +183,13 @@ class Service(Layer):
             self._log('looking for binding for {}...'.format(vnode))
             self.__configureServer(server, pnode)
             self._log('configure: bound {} to as{}/{}.'.format(vnode, pnode.getAsn(), pnode.getName()))
-    
+
     def render(self, emulator: Emulator):
         for (server, node) in self.__targets:
             self._doInstall(node, server)
             for className in server.getClassNames():
                 node.appendClassName(className)
-        
+
     def getConflicts(self) -> List[str]:
         """!
         @brief Get a list of conflicting services.
@@ -211,4 +220,3 @@ class Service(Layer):
         @brief Get a set of pending vnode to install the service on.
         """
         return self._pending_targets
-

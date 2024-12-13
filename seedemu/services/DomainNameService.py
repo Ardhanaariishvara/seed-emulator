@@ -20,6 +20,7 @@ options {
 };
 '''
 
+
 class Zone(Printable):
     """!
     @brief Domain name zone.
@@ -68,7 +69,7 @@ class Zone(Printable):
         if name in self.__subzones: return self.__subzones[name]
         self.__subzones[name] = Zone('{}.{}'.format(name, self.__zonename if self.__zonename != '.' else ''))
         return self.__subzones[name]
-    
+
     def getSubZones(self) -> Dict[str, Zone]:
         """!
         @brief Get all subzones.
@@ -88,7 +89,7 @@ class Zone(Printable):
         self.__records.append(record)
 
         return self
-    
+
     def deleteRecord(self, record: str) -> Zone:
         """!
         @brief Delete the record from zone.
@@ -113,7 +114,7 @@ class Zone(Printable):
         @returns self, for chaining API calls.
         """
         if fqdn[-1] != '.': fqdn += '.'
-        zonename = self.__zonename if self.__zonename != '' else '.' 
+        zonename = self.__zonename if self.__zonename != '' else '.'
         self.__gules.append('{} A {}'.format(fqdn, addr))
         self.__gules.append('{} NS {}'.format(zonename, fqdn))
 
@@ -168,7 +169,8 @@ class Zone(Printable):
             pnode = emulator.resolvVnode(vnode_name)
 
             ifaces = pnode.getInterfaces()
-            assert len(ifaces) > 0, 'resolvePendingRecords(): node as{}/{} has no interfaces'.format(pnode.getAsn(), pnode.getName())
+            assert len(ifaces) > 0, 'resolvePendingRecords(): node as{}/{} has no interfaces'.format(pnode.getAsn(),
+                                                                                                     pnode.getName())
             addr = ifaces[0].getAddress()
 
             self.addRecord('{} A {}'.format(domain_name, addr))
@@ -205,7 +207,7 @@ class Zone(Printable):
 
         @return list of records.
         """
-        return [ r for r in self.__records if keyword in r ]
+        return [r for r in self.__records if keyword in r]
 
     def print(self, indent: int) -> str:
         out = ' ' * indent
@@ -224,12 +226,13 @@ class Zone(Printable):
         indent -= 4
         out += ' ' * indent
         out += 'Subzones:\n'
-        
+
         indent += 4
         for subzone in self.__subzones.values():
             out += subzone.print(indent)
 
         return out
+
 
 class DomainNameServer(Server):
     """!
@@ -246,7 +249,7 @@ class DomainNameServer(Server):
         @brief DomainNameServer constructor.
         """
         super().__init__()
-        
+
         self.__zones = set()
         self.__is_master = False
         self.__is_real_root = False
@@ -316,7 +319,6 @@ class DomainNameServer(Server):
 
         return out
 
-        
     def __getRealRootRecords(self):
         """!
         @brief Helper tool, get real-world root zone records list by
@@ -328,16 +330,15 @@ class DomainNameServer(Server):
         rslt = requests.get(ROOT_ZONE_URL)
 
         assert rslt.status_code == 200, 'RIPEstat API returned non-200'
-        
+
         rules_byte = rslt.iter_lines()
-        
+
         for rule_byte in rules_byte:
-            line_str:str = rule_byte.decode('utf-8')
+            line_str: str = rule_byte.decode('utf-8')
             if not line_str.startswith('.'):
                 rules.append(line_str)
-        
-        return rules
 
+        return rules
 
     def configure(self, node: Node, dns: DomainNameService):
         """!
@@ -361,20 +362,22 @@ class DomainNameServer(Server):
                 if zonename == '.': zonename = ''
 
                 if len(zone.findRecords('SOA')) == 0:
-                    zone.addRecord('@ SOA {} {} {} 900 900 1800 60'.format('ns1.{}'.format(zonename), 'admin.{}'.format(zonename), randint(1, 0xffffffff)))
+                    zone.addRecord(
+                        '@ SOA {} {} {} 900 900 1800 60'.format('ns1.{}'.format(zonename), 'admin.{}'.format(zonename),
+                                                                randint(1, 0xffffffff)))
 
                 #If there are multiple zone servers, increase the NS number for ns name.
                 ns_number = 1
                 while (True):
                     if len(zone.findRecords('ns{}.{} A '.format(str(ns_number), zonename))) > 0:
-                        ns_number +=1
+                        ns_number += 1
                     else:
                         break
 
                 zone.addGuleRecord('ns{}.{}'.format(str(ns_number), zonename), addr)
                 zone.addRecord('ns{}.{} A {}'.format(str(ns_number), zonename, addr))
                 zone.addRecord('@ NS ns{}.{}'.format(str(ns_number), zonename))
-                
+
             if zone.getName() == "." and self.__is_real_root:
                 for record in self.__getRealRootRecords():
                     zone.addRecord(record)
@@ -402,21 +405,26 @@ class DomainNameServer(Server):
 
             if self.__is_master:
                 node.appendFile('/etc/bind/named.conf.zones',
-                        'zone "{}" {{ type master; notify yes; allow-transfer {{ any; }}; file "{}"; allow-update {{ any; }}; }};\n'.format(zonename, zonepath)
-                    )
-            elif zone.getName() in dns.getMasterIp().keys(): # Check if there are some master servers
+                                'zone "{}" {{ type master; notify yes; allow-transfer {{ any; }}; file "{}"; allow-update {{ any; }}; }};\n'.format(
+                                    zonename, zonepath)
+                                )
+            elif zone.getName() in dns.getMasterIp().keys():  # Check if there are some master servers
                 master_ips = ';'.join(dns.getMasterIp()[zone.getName()])
                 node.appendFile('/etc/bind/named.conf.zones',
-                    'zone "{}" {{ type slave; masters {{ {}; }}; file "{}"; }};\n'.format(zonename, master_ips, zonepath)
-                )
+                                'zone "{}" {{ type slave; masters {{ {}; }}; file "{}"; }};\n'.format(zonename,
+                                                                                                      master_ips,
+                                                                                                      zonepath)
+                                )
             else:
                 node.appendFile('/etc/bind/named.conf.zones',
-                    'zone "{}" {{ type master; file "{}"; allow-update {{ any; }}; }};\n'.format(zonename, zonepath)
-                )
+                                'zone "{}" {{ type master; file "{}"; allow-update {{ any; }}; }};\n'.format(zonename,
+                                                                                                             zonepath)
+                                )
 
         node.appendStartCommand('chown -R bind:bind /etc/bind/zones')
         node.appendStartCommand('service named start')
-    
+
+
 class DomainNameService(Service):
     """!
     @brief The domain name service.
@@ -424,7 +432,7 @@ class DomainNameService(Service):
 
     __rootZone: Zone
     __autoNs: bool
-    __masters: Dict [str, List[str]]
+    __masters: Dict[str, List[str]]
 
     def __init__(self, autoNameServer: bool = True):
         """!
@@ -437,7 +445,7 @@ class DomainNameService(Service):
         self.__rootZone = Zone('.')
         self.__masters = {}
         self.addDependency('Base', False, False)
-    
+
     def __autoNameServer(self, zone: Zone):
         """!
         @brief Try to automatically add NS records of children to parent zones.
@@ -474,7 +482,7 @@ class DomainNameService(Service):
 
     def getConflicts(self) -> List[str]:
         return ['DomainNameCachingService']
-    
+
     def getZone(self, domain: str) -> Zone:
         """!
         @brief Get a zone, create it if not exist.
@@ -524,9 +532,9 @@ class DomainNameService(Service):
                     info.append(vnode)
                     hit = True
                     break
-            
+
             if hit: continue
-        
+
         return info
 
     def addMasterIp(self, zone: str, addr: str) -> DomainNameService:
@@ -554,7 +562,7 @@ class DomainNameService(Service):
         """
         self.__masters = masters
 
-    def getMasterIp(self) -> Dict [str, List[str]]:
+    def getMasterIp(self) -> Dict[str, List[str]]:
         """!
         @brief get all master name server IP address.
 

@@ -13,7 +13,6 @@ from seedemu.utilities import Makers
 
 from typing import List, Tuple, Dict
 
-
 ###############################################################################
 emu     = Emulator()
 base    = Base()
